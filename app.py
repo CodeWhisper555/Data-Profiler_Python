@@ -4,104 +4,98 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
 
-# Page Config for a professional feel
+# 1. Page Configuration
 st.set_page_config(
     page_title="Data Intelligence Engine",
-    page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for a cleaner, high-tech look
-st.markdown("""
-    <style>
-    .main { background-color: #f8f9fa; }
-    .stMetric { background-color: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e9ecef; }
-    .stPlotlyChart { border-radius: 10px; }
-    </style>
-    """, unsafe_allow_name_with_html=True)
-
+# 2. Title and Subtitle
 st.title("Data Intelligence & Correlation Engine")
-st.caption("Advanced Statistical Handshake | Dual-Tier Architecture")
-st.markdown("---")
+st.caption("Professional Statistical Analysis | Dual-Tier Architecture")
+st.divider()
 
-# Sidebar for metadata and configuration
+# 3. Sidebar for Data Handshake
 with st.sidebar:
-    st.header("⚙️ Engine Settings")
-    uploaded_file = st.file_uploader("Sync CSV for Cloud Analysis", type="csv")
+    st.header("⚙️ System Sync")
+    uploaded_file = st.file_uploader("Upload CSV for Cloud Processing", type="csv")
     if uploaded_file:
         st.success("Data Handshake Successful")
 
+# 4. Main Engine Logic
 if uploaded_file is not None:
     # Load Data
     df = pd.read_csv(uploaded_file)
     numeric_df = df.select_dtypes(include=[np.number])
 
-    # --- 1. EXECUTIVE SUMMARY (High-Level Metrics) ---
+    # --- SECTION I: EXECUTIVE SUMMARY ---
     st.subheader("I. Executive Summary")
     m1, m2, m3, m4 = st.columns(4)
-    with m1:
-        st.metric("Total Records", len(df))
-    with m2:
-        st.metric("Feature Count", len(df.columns))
-    with m3:
-        st.metric("Numeric Features", len(numeric_df.columns))
-    with m4:
-        st.metric("Missing Data Points", df.isnull().sum().sum())
+    m1.metric("Total Records", len(df))
+    m2.metric("Total Features", len(df.columns))
+    m3.metric("Numeric Features", len(numeric_df.columns))
+    m4.metric("Missing Values", df.isnull().sum().sum())
 
-    st.markdown("---")
+    st.divider()
 
-    # --- 2. DEEP STATISTICAL MOMENTS (Enhanced Features) ---
-    st.subheader("II. Distribution Intelligence")
-    st.info("Analyzing the 'Shape' of your data. High Skewness (>1 or <-1) suggests the need for data transformation.")
-    
+    # --- SECTION II: DISTRIBUTION INTELLIGENCE ---
     if not numeric_df.empty:
-        # Calculate Skewness and Kurtosis (Advanced Math Features)
-        moments_df = pd.DataFrame({
-            'Skewness': numeric_df.skew(),
-            'Kurtosis': numeric_df.kurtosis(),
-            'Mean': numeric_df.mean()
-        })
-        st.table(moments_df.head(10)) # Showing first 10 for clean UI
+        st.subheader("II. Distribution Intelligence")
+        st.info("Analyzing Skewness (Symmetry) and Kurtosis (Tail-heaviness) to determine data normality.")
         
-        # --- 3. CORRELATION ARCHITECTURE ---
+        # Calculate Statistical Moments
+        stats_summary = pd.DataFrame({
+            'Mean': numeric_df.mean(),
+            'Skewness': numeric_df.skew(),
+            'Kurtosis': numeric_df.kurtosis()
+        })
+        st.dataframe(stats_summary, use_container_width=True)
+        
+        
+
+        # --- SECTION III: CORRELATION ARCHITECTURE ---
+        st.divider()
         col_left, col_right = st.columns([2, 1])
         
         with col_left:
-            st.subheader("III. Pearson Correlation Matrix")
+            st.subheader("III. Feature Dependency Map")
             corr = numeric_df.corr()
             fig, ax = plt.subplots(figsize=(10, 7))
             sns.heatmap(corr, annot=True, cmap='RdBu_r', center=0, fmt=".2f", ax=ax)
-            plt.title("Inter-Feature Dependency Map")
             st.pyplot(fig)
         
         with col_right:
             st.subheader("IV. Key Insights")
-            # Automatically find the highest correlation
-            if len(corr) > 1:
+            if len(corr.columns) > 1:
+                # Logic to find top 3 correlations
                 sol = (corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
                       .stack()
                       .sort_values(ascending=False))
+                
+                st.write("📈 **Top Positive Correlations:**")
                 for i in range(min(3, len(sol))):
-                    st.write(f"🔹 **Strong Link:** {sol.index[i][0]} & {sol.index[i][1]} ({sol[i]:.2f})")
+                    st.write(f"• {sol.index[i][0]} & {sol.index[i][1]}: `{sol[i]:.2f}`")
             else:
-                st.write("Not enough features for correlation comparison.")
+                st.write("Add more numeric columns for correlation mapping.")
 
-    # --- 4. PREDICTIVE VISUALIZATION ---
-    st.markdown("---")
-    st.subheader("V. Regression Analysis & Trend Estimation")
-    
-    if len(numeric_df.columns) >= 2:
-        target_cols = numeric_df.columns.tolist()
-        c1, c2 = st.columns(2)
-        x_axis = c1.selectbox("Independent Variable (X)", target_cols, index=0)
-        y_axis = c2.selectbox("Dependent Variable (Y)", target_cols, index=1)
+        # --- SECTION IV: PREDICTIVE TRENDS ---
+        st.divider()
+        st.subheader("V. Predictive Regression Analysis")
         
-        fig2, ax2 = plt.subplots(figsize=(10, 5))
-        sns.regplot(data=df, x=x_axis, y=y_axis, ax=ax2, scatter_kws={'alpha':0.5}, line_kws={'color':'red'})
-        plt.title(f"Predictive Trend: {y_axis} vs {x_axis}")
-        st.pyplot(fig2)
-        st.caption("The red line represents the Linear Regression model fitting these two variables.")
+        if len(numeric_df.columns) >= 2:
+            c1, c2 = st.columns(2)
+            x_col = c1.selectbox("Independent Variable (X)", numeric_df.columns, index=0)
+            y_col = c2.selectbox("Dependent Variable (Y)", numeric_df.columns, index=1)
+            
+            fig2, ax2 = plt.subplots(figsize=(12, 5))
+            sns.regplot(data=df, x=x_col, y=y_col, ax=ax2, 
+                        scatter_kws={'alpha':0.4, 'color':'#0984e3'}, 
+                        line_kws={'color':'#d63031'})
+            plt.title(f"Linear Trend: {y_col} vs {x_col}")
+            st.pyplot(fig2)
+            
+            
 
 else:
-    st.warning("Waiting for data handshake... Please upload the CSV in the sidebar.")
+    st.warning("Awaiting Data Handshake... Please upload the CSV in the sidebar to begin analysis.")
