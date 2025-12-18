@@ -3,49 +3,49 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# Page Config
-st.set_page_config(page_title="Analytics Engine", page_icon="📊", layout="wide")
+st.set_page_config(page_title="AI Data Engine", layout="wide")
 
-st.title("🐍 Advanced Statistical Engine")
+st.title("🧠 Advanced Statistical Engine")
 st.markdown("---")
 
-uploaded_file = st.file_uploader("Upload your dataset (CSV)", type="csv")
+uploaded_file = st.file_uploader("Upload the same CSV for deep analysis", type="csv")
 
-if uploaded_file:
-    # Load data
+if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     
-    # Sidebar stats
-    st.sidebar.header("Dataset Overview")
-    st.sidebar.write(f"Total Rows: {df.shape[0]}")
-    st.sidebar.write(f"Total Columns: {df.shape[1]}")
-
-    col1, col2 = st.columns(2)
-
+    # 1. High-Level Metrics
+    col1, col2, col3 = st.columns(3)
     with col1:
-        st.subheader("Raw Data Preview")
-        st.dataframe(df.head(10), use_container_width=True)
-
+        st.metric("Total Features", len(df.columns))
     with col2:
-        st.subheader("Key Statistics")
-        st.write(df.describe())
+        st.metric("Memory Usage", f"{df.memory_usage().sum() / 1024:.2f} KB")
+    with col3:
+        st.metric("Missing Values", df.isnull().sum().sum())
 
-    st.markdown("---")
+    # 2. Pearson Correlation Matrix
+    st.subheader("🔗 Pearson Correlation Heatmap")
+    st.info("This heatmap identifies linear relationships between variables.")
     
-    # AI Analysis Section: Correlation Heatmap
-    st.subheader("Feature Correlation Matrix")
-    st.info("Automated analysis of relationships between numerical variables.")
-    
-    # Filter only numeric columns for the heatmap
     numeric_df = df.select_dtypes(include=['number'])
-    
     if not numeric_df.empty:
+        # The Math: r = Σ((x - μx)(y - μy)) / (nx * ny)
+        corr = numeric_df.corr()
+        
         fig, ax = plt.subplots(figsize=(10, 8))
-        # Using the 'mako' palette looks very professional/modern
-        sns.heatmap(numeric_df.corr(), annot=True, cmap='mako', fmt=".2f", ax=ax)
+        sns.heatmap(corr, annot=True, cmap='coolwarm', fmt=".2f", ax=ax)
         st.pyplot(fig)
     else:
-        st.warning("No numerical features found to calculate correlations.")
+        st.warning("No numeric columns found for correlation analysis.")
 
-    st.markdown("---")
-    st.caption("Developed as part of the Intelligent Data Profiler Suite.")
+    # 3. Automated Insights
+    st.subheader("📝 Statistical Summary")
+    st.write(df.describe())
+
+    # 4. Export as CSV (The "Report")
+    csv = df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="📥 Download Statistical Profile (CSV)",
+        data=csv,
+        file_name='data_profile.csv',
+        mime='text/csv',
+    )
