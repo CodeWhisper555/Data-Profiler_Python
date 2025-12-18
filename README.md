@@ -17,4 +17,4 @@ This engine uses the **SciPy stack** (Pandas, Seaborn, Matplotlib) to generate a
 - **Hosting:** Streamlit Cloud
 
 ## 📈 Integration
-This tool is meant to be launched from the [Main Web Dashboard](Insert your GitHub Pages Link Here) when the user requires deeper data science capabilities.
+This tool is meant to be launched from the [Main Web Dashboard] https://codewhisper555.github.io/Data-Profiler_Web/ when the user requires deeper data science capabilities.
