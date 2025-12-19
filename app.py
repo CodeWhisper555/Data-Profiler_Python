@@ -11,49 +11,62 @@ import io
 # --- 1. SYSTEM CONFIGURATION ---
 st.set_page_config(page_title="NEURAL ANALYTICS ENGINE", layout="wide")
 
-# MCN-GRADE UI OVERRIDE (Fixes the Black-on-Black issue)
+# MCN-GRADE UI OVERRIDE (Forced High-Contrast Mode)
 st.markdown("""
 <style>
-    .main { background-color: #0A0C10; }
+    /* GLOBAL BODY RESET */
+    .main { background-color: #0A0C10 !important; color: #E6E6E6 !important; }
     
-    /* FORCE METRIC VISIBILITY */
+    /* FORCE TEXT VISIBILITY ON ALL HEADERS/MARKDOWN */
+    h1, h2, h3, p, span, label, .stMarkdown {
+        color: #E6E6E6 !important;
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* METRIC CARD OVERRIDE */
     [data-testid="stMetric"] {
         background-color: #161B22 !important;
         border: 1px solid #30363D !important;
         border-radius: 8px !important;
         padding: 15px !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-    [data-testid="stMetricLabel"] {
-        color: #FFFFFF !important; /* Force Label to White */
-        font-family: 'Roboto Mono' !important;
-        font-size: 14px !important;
-        opacity: 0.8;
-    }
-    [data-testid="stMetricValue"] {
-        color: #58A6FF !important; /* Force Value to Bright Blue */
-        font-family: 'Roboto Mono' !important;
-        font-weight: bold !important;
-    }
-    
-    /* Tab Styling */
-    .stTabs [data-baseweb="tab"] { color: #8B949E; }
+    [data-testid="stMetricLabel"] { color: #8B949E !important; font-size: 13px !important; text-transform: uppercase; }
+    [data-testid="stMetricValue"] { color: #58A6FF !important; font-family: 'Roboto Mono' !important; }
+
+    /* TAB VISIBILITY */
+    .stTabs [data-baseweb="tab-list"] { background-color: #0A0C10; }
+    .stTabs [data-baseweb="tab"] { color: #8B949E !important; }
     .stTabs [aria-selected="true"] { color: #58A6FF !important; border-bottom-color: #58A6FF !important; }
+
+    /* DATAFRAME STYLING */
+    .stDataFrame { border: 1px solid #30363D; border-radius: 5px; }
 </style>
 """, unsafe_allow_html=True)
 
 def purify_headers(columns):
     return [re.sub(r'[^\w]', '_', col).strip('_') for col in columns]
 
+@st.cache_data
+def convert_df(df):
+    return df.to_csv(index=False).encode('utf-8')
+
 # --- 2. SIDEBAR CONTROLS ---
 with st.sidebar:
-    st.title("ENGINE_CORE_v5.1")
+    st.title("ENGINE_CORE_v5.2")
     uploaded_file = st.file_uploader("INGEST DATA STREAM", type="csv")
     
     if uploaded_file:
         st.divider()
+        st.subheader("STREAM_CONFIG")
         clean_headers = st.toggle("PURIFY_HEADERS", value=True)
         scaling = st.toggle("NORMALIZE_VECTORS", value=True)
         impute_strategy = st.selectbox("IMPUTATION", ["Mean", "Median", "Zero Fill"])
+        
+        st.divider()
+        # NEW: Global Download Function
+        st.subheader("TERMINAL_OUTPUT")
+        # Logic to be handled after DF is processed below
 
 # --- 3. DATA ENGINE ---
 if uploaded_file:
@@ -70,6 +83,16 @@ if uploaded_file:
         if impute_strategy == "Mean": df[num_cols] = df[num_cols].fillna(df[num_cols].mean())
         elif impute_strategy == "Median": df[num_cols] = df[num_cols].fillna(df[num_cols].median())
         else: df[num_cols] = df[num_cols].fillna(0)
+
+    # SIDEBAR DOWNLOAD BUTTON (Now that df is ready)
+    with st.sidebar:
+        csv_ready = convert_df(df)
+        st.download_button(
+            label="EXPORT PROCESSED STREAM",
+            data=csv_ready,
+            file_name="neural_processed_data.csv",
+            mime="text/csv",
+        )
 
     # --- 4. DASHBOARD ---
     st.title("ANALYTIC_DASHBOARD")
@@ -89,7 +112,12 @@ if uploaded_file:
         if len(num_cols) > 1:
             fig, ax = plt.subplots(figsize=(10, 5))
             fig.patch.set_facecolor('#0A0C10')
-            sns.heatmap(df[num_cols].corr(), annot=True, cmap='RdBu', center=0, ax=ax)
+            ax.set_facecolor('#0A0C10')
+            corr = df[num_cols].corr()
+            sns.heatmap(corr, annot=True, cmap='RdBu', center=0, ax=ax, 
+                        annot_kws={"color": "white"}, cbar_kws={'label': 'Correlation Coefficient'})
+            plt.xticks(color='#8B949E')
+            plt.yticks(color='#8B949E')
             st.pyplot(fig)
         else:
             st.warning("Insufficient numeric data for correlation.")
@@ -102,7 +130,6 @@ if uploaded_file:
             with col1:
                 hue_sel = st.selectbox("COLOR_DIMENSION", ["None"] + cat_cols)
             with col2:
-                # NEW FEATURE: Logic Gate Button
                 run_pca = st.button("GENERATE_PROJECTION_MAP")
 
             if run_pca:
@@ -125,6 +152,8 @@ if uploaded_file:
                 ax.spines['bottom'].set_color('#30363D')
                 ax.spines['left'].set_color('#30363D')
                 ax.tick_params(colors='#8B949E')
+                ax.xaxis.label.set_color('#8B949E')
+                ax.yaxis.label.set_color('#8B949E')
                 st.pyplot(fig)
             else:
                 st.write("---")
@@ -138,7 +167,12 @@ if uploaded_file:
             y_ax = st.selectbox("VALUE_AXIS", num_cols)
             fig, ax = plt.subplots(figsize=(10, 5))
             fig.patch.set_facecolor('#0A0C10')
+            ax.set_facecolor('#0A0C10')
             sns.violinplot(data=df, x=x_ax, y=y_ax, palette="muted", ax=ax)
+            plt.xticks(color='#8B949E')
+            plt.yticks(color='#8B949E')
+            ax.xaxis.label.set_color('#8B949E')
+            ax.yaxis.label.set_color('#8B949E')
             st.pyplot(fig)
         else:
             st.warning("Bio-Profiling requires both Categorical and Numeric data.")
