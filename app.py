@@ -6,209 +6,117 @@ import numpy as np
 import re
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import StandardScaler
-import io
 
-# --- 1. SYSTEM CONFIGURATION ---
-st.set_page_config(page_title="NEURAL ANALYTICS ENGINE", layout="wide")
-
-# VIBRANT ANTI-LAYER CSS OVERRIDE (AGGRESSIVE RESET)
-st.markdown("""
-<style>
-    /* 1. UNIVERSAL TRANSPARENCY RESET */
-    /* This targets the white layers that sit on top of the background */
-    [data-testid="stAppViewContainer"], 
-    [data-testid="stHeader"], 
-    [data-testid="stMain"], 
-    [data-testid="stAppViewBlockContainer"],
-    .main, .block-container, .st-emotion-cache-10trblm, .st-emotion-cache-6qob1r {
-        background-color: transparent !important;
-        background: transparent !important;
-    }
-
-    /* 2. THE BASE GRADIENT LAYER */
-    .stApp {
-        background: linear-gradient(135deg, #020205 0%, #050a24 50%, #12061d 100%) !important;
-        background-attachment: fixed !important;
-    }
-
-    /* 3. NEON GLASSMORPHISM CARDS */
-    [data-testid="stMetric"] {
-        background: rgba(255, 255, 255, 0.04) !important;
-        border: 1px solid rgba(0, 242, 255, 0.4) !important;
-        border-radius: 12px !important;
-        padding: 20px !important;
-        backdrop-filter: blur(15px) !important;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
-    }
-
-    /* 4. TEXT & UI VIBRANCY */
-    h1, h2, h3, p, span, label, .stMarkdown {
-        color: #FFFFFF !important;
-        text-shadow: 0px 0px 8px rgba(0, 242, 255, 0.3);
-    }
-
-    [data-testid="stMetricLabel"] { 
-        color: #00F2FF !important; 
-        font-family: 'Roboto Mono' !important;
-        text-transform: uppercase;
-        font-size: 0.8rem !important;
-    }
-    
-    [data-testid="stMetricValue"] { 
-        color: #FF00E5 !important; 
-        font-family: 'Roboto Mono' !important;
-        text-shadow: 0px 0px 12px rgba(255, 0, 229, 0.6) !important;
-    }
-
-    /* 5. TAB STYLING */
-    .stTabs [data-baseweb="tab-list"] { background-color: transparent !important; }
-    .stTabs [data-baseweb="tab"] { color: rgba(255,255,255,0.5) !important; }
-    .stTabs [aria-selected="true"] { 
-        color: #00F2FF !important; 
-        border-bottom: 2px solid #00F2FF !important;
-    }
-
-    /* 6. NEON BUTTONS */
-    .stButton>button {
-        background: linear-gradient(90deg, #00F2FF, #FF00E5) !important;
-        color: white !important;
-        border: none !important;
-        border-radius: 5px !important;
-        font-weight: 800 !important;
-        letter-spacing: 1px;
-        transition: all 0.3s ease;
-    }
-    .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0px 5px 15px rgba(0, 242, 255, 0.5);
-    }
-    
-    /* 7. DATAFRAME VISIBILITY */
-    .stDataFrame {
-        border: 1px solid rgba(0, 242, 255, 0.2) !important;
-        border-radius: 8px;
-    }
-</style>
-""", unsafe_allow_html=True)
-
+# --- 1. CORE UTILITIES ---
 def purify_headers(columns):
+    """Removes special characters from column names for database compatibility."""
     return [re.sub(r'[^\w]', '_', col).strip('_') for col in columns]
 
 @st.cache_data
 def convert_df(df):
+    """Memoized function to encode dataframe for download."""
     return df.to_csv(index=False).encode('utf-8')
 
-# --- 2. SIDEBAR CONTROLS ---
+# --- 2. APP SETUP ---
+st.set_page_config(page_title="Data Logic Node", layout="wide")
+st.title("Operational Analytics Terminal")
+
+# --- 3. SIDEBAR: DATA INGESTION & CONFIG ---
 with st.sidebar:
-    st.title("NEON_CORE_v5.5")
-    uploaded_file = st.file_uploader("INGEST DATA STREAM", type="csv")
+    st.header("1. Data Ingress")
+    uploaded_file = st.file_uploader("Upload CSV Stream", type="csv")
     
     if uploaded_file:
         st.divider()
-        # EXPORT BUTTON AT THE TOP OF SIDEBAR
-        st.subheader("TERMINAL_EXPORT")
-        # Logic is handled below after data processing
-        
-        st.divider()
-        st.subheader("ENGINE_CONFIG")
-        clean_headers = st.toggle("PURIFY_HEADERS", value=True)
-        scaling = st.toggle("NORMALIZE_VECTORS", value=True)
-        impute_strategy = st.selectbox("IMPUTATION", ["Mean", "Median", "Zero Fill"])
+        st.header("2. Logic Configuration")
+        clean_headers = st.toggle("Purify Headers", value=True)
+        scaling = st.toggle("Normalize Vectors (PCA)", value=True)
+        impute_strategy = st.selectbox("Imputation Engine", ["Mean", "Median", "Zero Fill"])
 
-# --- 3. DATA ENGINE ---
+# --- 4. PROCESSING ENGINE ---
 if uploaded_file:
+    # Initial Load
     df = pd.read_csv(uploaded_file)
+    
+    # Header Purification Logic
     if clean_headers:
         df.columns = purify_headers(df.columns)
 
+    # Feature Detection
     num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     cat_cols = df.select_dtypes(exclude=[np.number]).columns.tolist()
 
-    # Apply Imputation
+    # Imputation Logic
     if num_cols:
-        if impute_strategy == "Mean": df[num_cols] = df[num_cols].fillna(df[num_cols].mean())
-        elif impute_strategy == "Median": df[num_cols] = df[num_cols].fillna(df[num_cols].median())
-        else: df[num_cols] = df[num_cols].fillna(0)
+        if impute_strategy == "Mean": 
+            df[num_cols] = df[num_cols].fillna(df[num_cols].mean())
+        elif impute_strategy == "Median": 
+            df[num_cols] = df[num_cols].fillna(df[num_cols].median())
+        else: 
+            df[num_cols] = df[num_cols].fillna(0)
 
-    # SIDEBAR DOWNLOAD BUTTON (Active state)
+    # Export Logic (Available in Sidebar once processed)
     with st.sidebar:
+        st.divider()
+        st.header("3. Terminal Export")
         csv_ready = convert_df(df)
         st.download_button(
-            label="⚡ DOWNLOAD PROCESSED STREAM",
+            label="Download Processed CSV",
             data=csv_ready,
-            file_name="neural_processed_output.csv",
+            file_name="processed_data_output.csv",
             mime="text/csv",
         )
 
-    # --- 4. MAIN DASHBOARD ---
-    st.title("VIBRANT_ANALYTIC_HUB")
-    
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("RECORDS", len(df))
-    m2.metric("NUMERIC", len(num_cols))
-    m3.metric("CATEGORIES", len(cat_cols))
-    m4.metric("SYSTEM", "STABLE")
+    # --- 5. DASHBOARD UI ---
+    col_a, col_b, col_c = st.columns(3)
+    col_a.metric("Total Records", len(df))
+    col_b.metric("Numeric Features", len(num_cols))
+    col_c.metric("Categorical Features", len(cat_cols))
 
-    tab_data, tab_corr, tab_pca, tab_bio = st.tabs(["DATA_VIEW", "CORRELATION", "PROJECTION", "BIO_PROFILING"])
+    tabs = st.tabs(["Inspector", "Correlation", "PCA Projection", "Bio-Distribution"])
 
-    with tab_data:
+    with tabs[0]:
         st.dataframe(df, use_container_width=True)
 
-    with tab_corr:
+    with tabs[1]:
         if len(num_cols) > 1:
             fig, ax = plt.subplots(figsize=(10, 5))
-            fig.patch.set_facecolor('#020205')
-            ax.set_facecolor('#020205')
-            corr = df[num_cols].corr()
-            sns.heatmap(corr, annot=True, cmap='magma', ax=ax, 
-                        annot_kws={"color": "white", "size": 9})
-            plt.xticks(color='#00F2FF', weight='bold')
-            plt.yticks(color='#00F2FF', weight='bold')
+            sns.heatmap(df[num_cols].corr(), annot=True, cmap='viridis', ax=ax)
             st.pyplot(fig)
         else:
-            st.warning("Insufficient numeric data for correlation.")
+            st.warning("Logic Error: Correlation requires >1 numeric column.")
 
-    with tab_pca:
-        st.subheader("DIMENSIONAL_PROJECTION")
+    with tabs[2]:
         if len(num_cols) >= 2:
-            col1, col2 = st.columns(2)
-            with col1:
-                hue_sel = st.selectbox("COLOR_DIMENSION", ["None"] + cat_cols)
-            with col2:
-                run_pca = st.button("EXECUTE NEON PCA")
+            c1, c2 = st.columns(2)
+            hue_col = c1.selectbox("Color By", ["None"] + cat_cols)
+            do_pca = c2.button("Execute PCA Analysis")
 
-            if run_pca:
-                pca_data = df[num_cols].copy()
-                if scaling: pca_data = StandardScaler().fit_transform(pca_data)
+            if do_pca:
+                x = df[num_cols].values
+                if scaling:
+                    x = StandardScaler().fit_transform(x)
                 
-                pca = PCA(n_components=2)
-                coords = pca.fit_transform(pca_data)
-                pca_df = pd.DataFrame(coords, columns=['PC1', 'PC2'])
+                pca_engine = PCA(n_components=2)
+                components = pca_engine.fit_transform(x)
+                pca_df = pd.DataFrame(components, columns=['PC1', 'PC2'])
                 
-                fig, ax = plt.subplots(figsize=(10, 6))
-                fig.patch.set_facecolor('#020205')
-                ax.set_facecolor('#020205')
-                
-                if hue_sel != "None":
-                    sns.scatterplot(data=pca_df, x='PC1', y='PC2', hue=df[hue_sel].values, palette="husl", ax=ax, s=100)
+                fig, ax = plt.subplots()
+                if hue_col != "None":
+                    sns.scatterplot(data=pca_df, x='PC1', y='PC2', hue=df[hue_col], ax=ax)
                 else:
-                    sns.scatterplot(data=pca_df, x='PC1', y='PC2', color='#00F2FF', ax=ax, s=100)
-                
-                ax.tick_params(colors='#FFFFFF')
-                ax.xaxis.label.set_color('#00F2FF')
-                ax.yaxis.label.set_color('#00F2FF')
+                    sns.scatterplot(data=pca_df, x='PC1', y='PC2', ax=ax)
                 st.pyplot(fig)
+        else:
+            st.error("Logic Error: PCA requires minimum 2 numeric features.")
 
-    with tab_bio:
+    with tabs[3]:
         if cat_cols and num_cols:
-            x_ax = st.selectbox("LABEL_AXIS", cat_cols)
-            y_ax = st.selectbox("VALUE_AXIS", num_cols)
-            fig, ax = plt.subplots(figsize=(10, 5))
-            fig.patch.set_facecolor('#020205')
-            ax.set_facecolor('#020205')
-            sns.violinplot(data=df, x=x_ax, y=y_ax, palette="cool", ax=ax)
-            plt.xticks(color='#00F2FF', rotation=45)
-            plt.yticks(color='#00F2FF')
+            sel_cat = st.selectbox("Categorical Axis", cat_cols)
+            sel_num = st.selectbox("Numerical Axis", num_cols)
+            fig, ax = plt.subplots()
+            sns.violinplot(data=df, x=sel_cat, y=sel_num, ax=ax)
             st.pyplot(fig)
+
 else:
-    st.info("System Ready: Upload a CSV to initialize the Neon Grid.")
+    st.info("System Standby. Please upload a dataset to begin logic execution.")
