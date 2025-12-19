@@ -11,12 +11,33 @@ import io
 # --- 1. SYSTEM CONFIGURATION ---
 st.set_page_config(page_title="NEURAL ANALYTICS ENGINE", layout="wide")
 
+# Enhanced CSS for Visibility (Fixed the "Black on Black" issue)
 st.markdown("""
 <style>
     .main { background-color: #0A0C10; }
-    .stMetric { background-color: #101214; border: 1px solid #30363D; padding: 15px; border-radius: 5px; }
-    .stButton>button { width: 100%; border-radius: 4px; font-family: 'Roboto Mono'; }
-    .stSelectbox label { color: #8B949E !重要; }
+    /* Metric Card Styling */
+    div[data-testid="stMetric"] {
+        background-color: #161B22 !important;
+        border: 1px solid #30363D !important;
+        padding: 20px !important;
+        border-radius: 8px !important;
+    }
+    div[data-testid="stMetricLabel"] {
+        color: #8B949E !important; /* Muted Grey Label */
+        font-family: 'Roboto Mono' !important;
+        letter-spacing: 1px !important;
+    }
+    div[data-testid="stMetricValue"] {
+        color: #58A6FF !important; /* Bright Electric Blue Value */
+        font-family: 'Roboto Mono' !important;
+    }
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
+    .stTabs [data-baseweb="tab"] {
+        background-color: #161B22;
+        border: 1px solid #30363D;
+        color: #8B949E;
+        padding: 10px 20px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -26,8 +47,7 @@ def purify_headers(columns):
 # --- 2. EXECUTIVE SIDEBAR ---
 with st.sidebar:
     st.title("ENGINE_CORE")
-    st.caption("VERSION 4.2.3-STABLE")
-    
+    st.caption("VERSION 4.2.4-STABLE")
     uploaded_file = st.file_uploader("UPLOAD DATA STREAM (.CSV)", type="csv")
     
     if uploaded_file:
@@ -36,25 +56,19 @@ with st.sidebar:
         clean_headers = st.toggle("PURIFY_HEADERS", value=True)
         impute_strategy = st.selectbox("IMPUTATION_LOGIC", ["Mean", "Median", "Zero Fill"])
         scaling = st.toggle("NORMALIZE_VECTORS", value=True)
-        
-        st.divider()
-        st.subheader("EXPORT_INTERFACE")
 
-# --- 3. DATA ARCHITECTURE & PROCESSING ---
+# --- 3. DATA ARCHITECTURE ---
 if uploaded_file:
     df = pd.read_csv(uploaded_file)
-    
     if clean_headers:
         df.columns = purify_headers(df.columns)
 
     if 'Sex' in df.columns:
         df['Sex'] = df['Sex'].replace('.', np.nan)
 
-    # Re-detecting types after purification
     num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     cat_cols = df.select_dtypes(exclude=[np.number]).columns.tolist()
 
-    # Apply Imputation
     if num_cols:
         if impute_strategy == "Mean":
             df[num_cols] = df[num_cols].fillna(df[num_cols].mean())
@@ -62,13 +76,6 @@ if uploaded_file:
             df[num_cols] = df[num_cols].fillna(df[num_cols].median())
         else:
             df[num_cols] = df[num_cols].fillna(0)
-
-    # Download Logic
-    csv_buffer = io.StringIO()
-    df.to_csv(csv_buffer, index=False)
-    with st.sidebar:
-        st.download_button(label="DOWNLOAD_REFINED_DATA", data=csv_buffer.getvalue(), 
-                         file_name="refined_neural_stream.csv", mime="text/csv")
 
     # --- 4. DASHBOARD LAYOUT ---
     st.title("ANALYTIC_DASHBOARD")
@@ -90,10 +97,10 @@ if uploaded_file:
         if len(num_cols) > 1:
             fig_corr, ax_c = plt.subplots(figsize=(8, 5))
             fig_corr.patch.set_facecolor('#0A0C10')
-            sns.heatmap(df[num_cols].corr(), annot=True, cmap='RdBu', center=0, ax=ax_c)
+            sns.heatmap(df[num_cols].corr(), annot=True, cmap='RdBu', center=0, ax=ax_c, annot_kws={"size": 8})
             st.pyplot(fig_corr)
         else:
-            st.info("NOT_ENOUGH_NUMERIC_DATA")
+            st.warning("INSUFFICIENT_NUMERIC_VECTORS")
 
     with tab_pca:
         st.subheader("DIMENSIONAL_PROJECTION")
@@ -106,22 +113,22 @@ if uploaded_file:
             components = pca.fit_transform(pca_data)
             pca_df = pd.DataFrame(data=components, columns=['PC1', 'PC2'], index=df.index)
             
-            # SAFE SELECTION LOGIC
+            # Use "None" if no categories exist
             options = ["None"] + cat_cols
             hue_col = st.selectbox("COLOR_DIMENSION:", options, key="pca_hue")
             
             fig_pca, ax_p = plt.subplots(figsize=(10, 6))
             fig_pca.patch.set_facecolor('#0A0C10')
+            ax_p.set_facecolor('#0A0C10')
             
             if hue_col != "None" and hue_col in df.columns:
-                pca_df[hue_col] = df[hue_col]
-                sns.scatterplot(data=pca_df, x='PC1', y='PC2', hue=hue_col, ax=ax_p, palette="viridis")
+                sns.scatterplot(data=pca_df, x='PC1', y='PC2', hue=df[hue_col], ax=ax_p, palette="viridis")
             else:
                 sns.scatterplot(data=pca_df, x='PC1', y='PC2', ax=ax_p, color='#007BFF')
             
             st.pyplot(fig_pca)
         else:
-            st.error("REQUIRE_2_NUMERIC_COLUMNS_FOR_PCA")
+            st.error("PROJECTION_UNAVAILABLE: REQUIRE 2+ NUMERIC COLUMNS")
 
     with tab_bio:
         st.subheader("DISTRIBUTION_ANALYSIS")
@@ -134,6 +141,8 @@ if uploaded_file:
             sns.violinplot(data=df, x=x_ax, y=y_ax, ax=ax_b, palette="muted")
             st.pyplot(fig_bio)
         else:
-            st.warning("CATEGORICAL_DATA_MISSING_FOR_PROFILING")
+            # Display clearly that profiling is impossible without categories
+            st.warning("BIO_PROFILING_UNAVAILABLE: NO_CATEGORICAL_DATA_DETECTED")
+            st.info("Ingest a dataset containing labels (e.g., Species, Sex) to enable profiling.")
 else:
     st.info("Awaiting secure stream from Terminal...")
