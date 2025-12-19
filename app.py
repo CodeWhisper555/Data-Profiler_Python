@@ -9,19 +9,19 @@ from sklearn.preprocessing import StandardScaler
 
 # --- 1. CORE UTILITIES ---
 def purify_headers(columns):
-    """Removes special characters from column names for database compatibility."""
+    """Standardizes column names by removing special characters."""
     return [re.sub(r'[^\w]', '_', col).strip('_') for col in columns]
 
 @st.cache_data
 def convert_df(df):
-    """Memoized function to encode dataframe for download."""
+    """Encodes the processed dataframe for the download function."""
     return df.to_csv(index=False).encode('utf-8')
 
 # --- 2. APP SETUP ---
 st.set_page_config(page_title="Data Logic Node", layout="wide")
 st.title("Operational Analytics Terminal")
 
-# --- 3. SIDEBAR: DATA INGESTION & CONFIG ---
+# --- 3. SIDEBAR: INGESTION & GLOBAL LOGIC ---
 with st.sidebar:
     st.header("1. Data Ingress")
     uploaded_file = st.file_uploader("Upload CSV Stream", type="csv")
@@ -35,18 +35,16 @@ with st.sidebar:
 
 # --- 4. PROCESSING ENGINE ---
 if uploaded_file:
-    # Initial Load
     df = pd.read_csv(uploaded_file)
     
-    # Header Purification Logic
     if clean_headers:
         df.columns = purify_headers(df.columns)
 
-    # Feature Detection
+    # Logic: Separate Numeric and Categorical Features
     num_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     cat_cols = df.select_dtypes(exclude=[np.number]).columns.tolist()
 
-    # Imputation Logic
+    # Logic: Imputation Execution
     if num_cols:
         if impute_strategy == "Mean": 
             df[num_cols] = df[num_cols].fillna(df[num_cols].mean())
@@ -55,7 +53,7 @@ if uploaded_file:
         else: 
             df[num_cols] = df[num_cols].fillna(0)
 
-    # Export Logic (Available in Sidebar once processed)
+    # SIDEBAR: Terminal Export
     with st.sidebar:
         st.divider()
         st.header("3. Terminal Export")
@@ -102,21 +100,27 @@ if uploaded_file:
                 pca_df = pd.DataFrame(components, columns=['PC1', 'PC2'])
                 
                 fig, ax = plt.subplots()
-                if hue_col != "None":
-                    sns.scatterplot(data=pca_df, x='PC1', y='PC2', hue=df[hue_col], ax=ax)
-                else:
-                    sns.scatterplot(data=pca_df, x='PC1', y='PC2', ax=ax)
+                sns.scatterplot(data=pca_df, x='PC1', y='PC2', hue=(df[hue_col] if hue_col != "None" else None), ax=ax)
                 st.pyplot(fig)
         else:
             st.error("Logic Error: PCA requires minimum 2 numeric features.")
 
     with tabs[3]:
+        # FIXED: Persistent message logic for Bio-Distribution
         if cat_cols and num_cols:
             sel_cat = st.selectbox("Categorical Axis", cat_cols)
             sel_num = st.selectbox("Numerical Axis", num_cols)
-            fig, ax = plt.subplots()
-            sns.violinplot(data=df, x=sel_cat, y=sel_num, ax=ax)
-            st.pyplot(fig)
+            
+            # Check if there is data to plot
+            if not df[sel_num].dropna().empty:
+                fig, ax = plt.subplots()
+                sns.violinplot(data=df, x=sel_cat, y=sel_num, ax=ax)
+                st.pyplot(fig)
+            else:
+                st.info("No distribution detected for the selected feature.")
+        else:
+            # Persistent message when requirements aren't met
+            st.warning("Bio-Profiling Standby: This analysis requires at least one Categorical column and one Numeric column to generate a distribution.")
 
 else:
     st.info("System Standby. Please upload a dataset to begin logic execution.")
