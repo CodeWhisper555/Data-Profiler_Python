@@ -48,7 +48,7 @@ if uploaded_file is not None:
         st.success("Pipeline: Z-Score Scaling Applied")
 
     # --- STAGE 3: VISUALIZATION MODULES ---
-    tab1, tab2, tab3 = st.tabs(["📊 Diagnostic Summary", "📈 Correlation Matrix", "🧬 Advanced PCA"])
+    tab1, tab2, tab3 = st.tabs(["Diagnostic Summary", "Correlation Matrix", "Advanced PCA"])
 
     with tab1:
         st.subheader("Data Health Metrics")
@@ -88,7 +88,8 @@ if uploaded_file is not None:
     # --- STAGE 4: EXPORT ---
     st.divider()
     csv = numeric_df.to_csv(index=False).encode('utf-8')
-    st.download_button("📥 Download Engineered Dataset", data=csv, file_name="engineered_data.csv", mime="text/csv")
+    st.download_button("Download Engineered Dataset", data=csv, file_name="engineered_data.csv", mime="text/csv")
 
 else:
     st.info("System idling... Awaiting CSV handshake via Sidebar.")
+
