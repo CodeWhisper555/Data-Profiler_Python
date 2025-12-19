@@ -3,99 +3,92 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
-# 1. Page Configuration
-st.set_page_config(
-    page_title="Data Intelligence Engine",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+# 1. High-End Page Config
+st.set_page_config(page_title="Intelligence Studio v2.0", layout="wide")
 
-# 2. Title and Subtitle
-st.title("Data Intelligence & Correlation Engine")
-st.caption("Professional Statistical Analysis | Dual-Tier Architecture")
-st.divider()
+st.title("Systems Architecture: Advanced Data Engine")
+st.caption("Status: Operational | Tier: Research Grade | Logic: PCA & Multi-Variate Analysis")
 
-# 3. Sidebar for Data Handshake
+# 2. Sidebar Command Center
 with st.sidebar:
-    st.header("⚙️ System Sync")
-    uploaded_file = st.file_uploader("Upload CSV for Cloud Processing", type="csv")
+    st.header("🎮 Command Center")
+    uploaded_file = st.file_uploader("Sync Data Stream", type="csv")
+    
     if uploaded_file:
-        st.success("Data Handshake Successful")
+        st.divider()
+        st.subheader("Pipeline Configuration")
+        impute_strategy = st.selectbox("Missing Value Strategy", ["None", "Mean", "Median", "Mode"])
+        enable_pca = st.checkbox("Enable PCA (Dimensionality Reduction)")
+        enable_scaling = st.checkbox("Apply Z-Score Scaling")
 
-# 4. Main Engine Logic
+# 3. Processing Pipeline
 if uploaded_file is not None:
-    # Load Data
     df = pd.read_csv(uploaded_file)
     numeric_df = df.select_dtypes(include=[np.number])
+    
+    # --- STAGE 1: SMART IMPUTATION ---
+    if impute_strategy != "None":
+        for col in numeric_df.columns:
+            if numeric_df[col].isnull().any():
+                if impute_strategy == "Mean":
+                    numeric_df[col] = numeric_df[col].fillna(numeric_df[col].mean())
+                elif impute_strategy == "Median":
+                    numeric_df[col] = numeric_df[col].fillna(numeric_df[col].median())
+        st.success(f"Pipeline: {impute_strategy} Imputation Complete")
 
-    # --- SECTION I: EXECUTIVE SUMMARY ---
-    st.subheader("I. Executive Summary")
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("Total Records", len(df))
-    m2.metric("Total Features", len(df.columns))
-    m3.metric("Numeric Features", len(numeric_df.columns))
-    m4.metric("Missing Values", df.isnull().sum().sum())
+    # --- STAGE 2: FEATURE SCALING ---
+    processed_df = numeric_df.copy()
+    if enable_scaling and not processed_df.empty:
+        scaler = StandardScaler()
+        scaled_data = scaler.fit_transform(processed_df)
+        processed_df = pd.DataFrame(scaled_data, columns=processed_df.columns)
+        st.success("Pipeline: Z-Score Scaling Applied")
 
-    st.divider()
+    # --- STAGE 3: VISUALIZATION MODULES ---
+    tab1, tab2, tab3 = st.tabs(["📊 Diagnostic Summary", "📈 Correlation Matrix", "🧬 Advanced PCA"])
 
-    # --- SECTION II: DISTRIBUTION INTELLIGENCE ---
-    if not numeric_df.empty:
-        st.subheader("II. Distribution Intelligence")
-        st.info("Analyzing Skewness (Symmetry) and Kurtosis (Tail-heaviness) to determine data normality.")
+    with tab1:
+        st.subheader("Data Health Metrics")
+        c1, c2, c3 = st.columns(3)
+        c1.metric("Rows", len(df))
+        c2.metric("Features", len(df.columns))
+        c3.metric("Null Count", numeric_df.isnull().sum().sum())
         
-        # Calculate Statistical Moments
-        stats_summary = pd.DataFrame({
-            'Mean': numeric_df.mean(),
-            'Skewness': numeric_df.skew(),
-            'Kurtosis': numeric_df.kurtosis()
-        })
-        st.dataframe(stats_summary, use_container_width=True)
-        
-        
+        st.dataframe(numeric_df.describe(), use_container_width=True)
 
-        # --- SECTION III: CORRELATION ARCHITECTURE ---
-        st.divider()
-        col_left, col_right = st.columns([2, 1])
-        
-        with col_left:
-            st.subheader("III. Feature Dependency Map")
-            corr = numeric_df.corr()
-            fig, ax = plt.subplots(figsize=(10, 7))
-            sns.heatmap(corr, annot=True, cmap='RdBu_r', center=0, fmt=".2f", ax=ax)
+    with tab2:
+        if not numeric_df.empty:
+            st.subheader("Pearson Multi-Variate Correlation")
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sns.heatmap(numeric_df.corr(), annot=True, cmap='magma', fmt=".2f")
             st.pyplot(fig)
-        
-        with col_right:
-            st.subheader("IV. Key Insights")
-            if len(corr.columns) > 1:
-                # Logic to find top 3 correlations
-                sol = (corr.where(np.triu(np.ones(corr.shape), k=1).astype(bool))
-                      .stack()
-                      .sort_values(ascending=False))
-                
-                st.write("📈 **Top Positive Correlations:**")
-                for i in range(min(3, len(sol))):
-                    st.write(f"• {sol.index[i][0]} & {sol.index[i][1]}: `{sol[i]:.2f}`")
-            else:
-                st.write("Add more numeric columns for correlation mapping.")
+        else:
+            st.warning("Insufficient numeric data for correlation.")
 
-        # --- SECTION IV: PREDICTIVE TRENDS ---
-        st.divider()
-        st.subheader("V. Predictive Regression Analysis")
-        
-        if len(numeric_df.columns) >= 2:
-            c1, c2 = st.columns(2)
-            x_col = c1.selectbox("Independent Variable (X)", numeric_df.columns, index=0)
-            y_col = c2.selectbox("Dependent Variable (Y)", numeric_df.columns, index=1)
+    with tab3:
+        if enable_pca and len(processed_df.columns) >= 2:
+            st.subheader("Principal Component Analysis (PCA)")
+            st.info("PCA reduces high-dimensional data into 2 components while preserving variance.")
             
-            fig2, ax2 = plt.subplots(figsize=(12, 5))
-            sns.regplot(data=df, x=x_col, y=y_col, ax=ax2, 
-                        scatter_kws={'alpha':0.4, 'color':'#0984e3'}, 
-                        line_kws={'color':'#d63031'})
-            plt.title(f"Linear Trend: {y_col} vs {x_col}")
+            pca = PCA(n_components=2)
+            components = pca.fit_transform(processed_df.dropna())
+            pca_df = pd.DataFrame(data=components, columns=['PC1', 'PC2'])
+            
+            fig2, ax2 = plt.subplots(figsize=(10, 6))
+            sns.scatterplot(data=pca_df, x='PC1', y='PC2', alpha=0.7, color="#6c5ce7")
+            plt.title(f"PCA Map (Variance Explained: {sum(pca.explained_variance_ratio_)*100:.1f}%)")
             st.pyplot(fig2)
-            
-            
+            st.write(f"**Insight:** The data has been compressed. Clusters here represent hidden similarities in the records.")
+        else:
+            st.info("Enable PCA in the sidebar to visualize high-dimensional clusters.")
+
+    # --- STAGE 4: EXPORT ---
+    st.divider()
+    csv = numeric_df.to_csv(index=False).encode('utf-8')
+    st.download_button("📥 Download Engineered Dataset", data=csv, file_name="engineered_data.csv", mime="text/csv")
 
 else:
-    st.warning("Awaiting Data Handshake... Please upload the CSV in the sidebar to begin analysis.")
+    st.info("System idling... Awaiting CSV handshake via Sidebar.")
